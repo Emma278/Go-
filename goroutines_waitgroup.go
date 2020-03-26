@@ -7,20 +7,20 @@ The go concurrency primitive is the goroutine. You can spin tens of thousands
 
 import "fmt"
 import "net/http"
-import "sync"
+// import "sync"
 
 // The function returnType makes a HTTP call, looks at the header, and returns
 // the type.
-func returnType(url string) {
+func returnType(url string, out chan string) {
   resp, err := http.Get(url)
   if err != nil {
-    fmt.Printf("error: %s\n", err)
+    out <- fmt.Sprintf("%s -> error: %s", url, err)
     return
   }
 
   defer resp.Body.Close()
   ctype := resp.Header.Get("content-type")
-  fmt.Printf("%s -> %s\n", url, ctype)
+  out <- fmt.Sprintf("%s -> %s", url, ctype)
 }
 
 func main() {
@@ -30,6 +30,13 @@ func main() {
     "https://httpbin.org/xml",
   }
 
+  // Here's a response channel.
+  ch := make(chan string)
+  for _, url := range urls {
+    go returnType(url, ch)
+  }
+
+/*
   var wg sync.WaitGroup
 // return the type of every url in urls
 // and also use concurrence goroutine to speed up the script
@@ -41,4 +48,11 @@ func main() {
     } (url)
   }
   wg.Wait()
+*/
+
+// Instead of using waitgroup, we use the preferred Channel.
+  for range urls { // run number of URLs times
+    out := <-ch
+    fmt.Println(out)
+  }
 }
